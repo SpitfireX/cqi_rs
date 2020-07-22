@@ -3,85 +3,119 @@ use std::io::Result as IoResult;
 use std::io::{Read, Write};
 use std::mem;
 use byteorder::{ByteOrder, NetworkEndian, ReadBytesExt};
+use std::any::Any;
 
 mod tests;
 
-pub enum CQiData {
-    BOOL(bool),
-    BYTE(u8),
-    WORD(u16),
-    INT(i32),
-    STRING(String),
-    BOOL_LIST(Vec<bool>),
-    BYTE_LIST(Vec<u8>),
-    INT_LIST(Vec<i32>),
-    STRING_LIST(Vec<String>),
+pub type BOOL = bool;
+pub type BYTE = u8;
+pub type WORD = u16;
+pub type INT = i32;
+pub type STRING = &'static str;
+pub type BOOL_LIST = Vec<BOOL>;
+pub type BYTE_LIST = Vec<BYTE>;
+pub type INT_LIST = Vec<INT>;
+pub type STRING_LIST = Vec<STRING>;
+
+// pub type BOOL = bool;
+// pub type BYTE = u8;
+// pub type WORD = u16;
+// pub type INT = i32;
+// pub type STRING = &'static str;
+// pub type LIST = Vec<dyn CQiBasicType>;
+
+// trait CQiBasicType {}
+// impl CQiBasicType for BOOL {}
+// impl CQiBasicType for BYTE {}
+// impl CQiBasicType for INT {}
+// impl CQiBasicType for STRING {}
+
+// impl WriteCQiBytes for LIST {
+
+// }
+
+pub trait WriteCQiBytes {
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()>;
 }
 
-pub trait ToCQiBytes {
-    fn to_cqi_data(self) -> Box<CQiData>;
-    fn to_bytes(self) -> Vec<u8>;
-}
-
-impl ToCQiBytes for bool {
-    fn to_cqi_data(self) -> Box<CQiData> {
-        Box::new(CQiData::BOOL(self))
-    }
-
-    fn to_bytes(self) -> std::vec::Vec<u8> {
-        vec![self as u8]
-    }
-}
-
-impl ToCQiBytes for u8 {
-    fn to_cqi_data(self) -> Box<CQiData> {
-        Box::new(CQiData::BYTE(self))
-    }
-
-    fn to_bytes(self) -> Vec<u8> {
-        vec![self]
-    }
-}
-
-impl ToCQiBytes for u16 {
-    fn to_cqi_data(self) -> Box<CQiData> {
-        Box::new(CQiData::WORD(self))
-    }
-
-    fn to_bytes(self) -> Vec<u8> {
-        (self).to_be_bytes().to_vec()
+impl WriteCQiBytes for BOOL {
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        Ok(stream.write_all(&[*self as BYTE])?)
     }
 }
 
-impl ToCQiBytes for i32 {
-    fn to_cqi_data(self) -> Box<CQiData> {
-        Box::new(CQiData::INT(self))
-    }
-
-    fn to_bytes(self) -> Vec<u8> {
-        (self).to_be_bytes().to_vec()
+impl WriteCQiBytes for BYTE {
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        Ok(stream.write_all(&[*self])?)
     }
 }
 
-impl ToCQiBytes for &str {
-    fn to_cqi_data(self) -> Box<CQiData> {
-        Box::new(CQiData::STRING(self.to_string()))
+impl WriteCQiBytes for WORD {
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        Ok(stream.write_all(&(self.to_be_bytes()))?)
     }
+}
 
-    fn to_bytes(self) -> Vec<u8> {
-        let mut ret = (self.len() as u16).to_be_bytes().to_vec();
-        ret.extend_from_slice(self.as_bytes());
-        ret
+impl WriteCQiBytes for INT {
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        Ok(stream.write_all(&(self.to_be_bytes()))?)
+    }
+}
+
+impl WriteCQiBytes for STRING {
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        stream.write_all(&(self.len() as WORD).to_be_bytes())?;
+        Ok(stream.write_all(&(self.as_bytes()))?)
+    }
+}
+
+impl WriteCQiBytes for BOOL_LIST {
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        stream.write_all(&(self.len() as WORD).to_be_bytes())?;
+        for elem in self {
+            elem.write_cqi_bytes(stream)?;
+        }
+        Ok(())
+    }
+}
+
+impl WriteCQiBytes for BYTE_LIST {
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        stream.write_all(&(self.len() as WORD).to_be_bytes())?;
+        for elem in self {
+            elem.write_cqi_bytes(stream)?;
+        }
+        Ok(())
+    }
+}
+
+impl WriteCQiBytes for INT_LIST {
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        stream.write_all(&(self.len() as WORD).to_be_bytes())?;
+        for elem in self {
+            elem.write_cqi_bytes(stream)?;
+        }
+        Ok(())
+    }
+}
+
+impl WriteCQiBytes for STRING_LIST {
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        stream.write_all(&(self.len() as WORD).to_be_bytes())?;
+        for elem in self {
+            elem.write_cqi_bytes(stream)?;
+        }
+        Ok(())
     }
 }
 
 pub trait ReadCQiBytes {
-    fn read_cqi_bytes(stream: &mut TcpStream) -> IoResult<Self>;
+    fn read_cqi_bytes(stream: &mut TcpStream) -> IoResult<Box<Self>>;
 }
 
-impl ReadCQiBytes for u16 {
-    fn read_cqi_bytes(stream: &mut TcpStream) -> IoResult<u16> {
-        stream.read_u16::<NetworkEndian>()
+impl ReadCQiBytes for WORD {
+    fn read_cqi_bytes(stream: &mut TcpStream) -> IoResult<Box<WORD>> {
+        Ok(Box::new(stream.read_u16::<NetworkEndian>()?))
     }
 }
 
@@ -98,25 +132,12 @@ impl CQiConnection {
     }
 
     pub fn read<A: ReadCQiBytes>(&mut self) -> IoResult<A> {
-        A::read_cqi_bytes(&mut self.stream)
+        let result = A::read_cqi_bytes(&mut self.stream)?;
+        Ok(*result)
     }
 
-    pub fn write<A: ToCQiBytes>(&mut self, data: A) -> IoResult<usize> {
-        let bytes = data.to_bytes();
-        let n = self.stream.write(&bytes)?;
-        Ok(n)
+    pub fn write<A: WriteCQiBytes>(&mut self, data: A) -> IoResult<()> {
+        data.write_cqi_bytes(&mut self.stream)
     }
-
-    pub fn write_word(&mut self, data: u16) -> IoResult<usize> {
-        let bytes = data.to_be_bytes();
-        let n = self.stream.write(&bytes)?;
-        Ok(n)
-    }
-
-    pub fn write_string(&mut self, data: &str) -> IoResult<usize> {
-        let mut bytes = (data.len() as u16).to_be_bytes().to_vec();
-        bytes.extend_from_slice(data.as_bytes());
-        let n = self.stream.write(&bytes)?;
-        Ok(n)
-    }
+    
 }
