@@ -10,8 +10,8 @@ fn main() -> IoResult<()> {
     // connection.write_string("ficken23");
     // mit magie
     connection.write(0x1101 as WORD);
-    connection.write("test");
-    connection.write("ficken23");
+    connection.write("test".to_string());
+    connection.write("ficken23".to_string());
 
     let w = connection.read::<WORD>()?;
     print!("{}", w);
