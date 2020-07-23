@@ -3,6 +3,7 @@ use std::io::Result as IoResult;
 use std::io::{Read, Write};
 use byteorder::{ByteOrder, NetworkEndian, ReadBytesExt};
 
+mod cqi_consts;
 mod tests;
 
 pub type BOOL = bool;
