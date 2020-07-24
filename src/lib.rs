@@ -62,7 +62,7 @@ impl ReadCQiBytes for INT {
 }
 
 fn read_cqi_list<T: ReadCQiBytes>(stream: &mut TcpStream) -> IoResult<Box<Vec<T>>> {
-    let len = stream.read_u16::<NetworkEndian>()?;
+    let len = stream.read_i32::<NetworkEndian>()?;
     let mut data: Vec<T> = Vec::with_capacity(len as usize);
     
     for value in &mut data {
@@ -140,7 +140,7 @@ impl WriteCQiBytes for STRING {
 }
 
 fn write_cqi_list<T: WriteCQiBytes>(stream: &mut TcpStream, list: &[T]) -> IoResult<()> {
-    stream.write_all(&(list.len() as WORD).to_be_bytes())?;
+    stream.write_all(&(list.len() as INT).to_be_bytes())?;
     for elem in list {
         elem.write_cqi_bytes(stream)?;
     }
