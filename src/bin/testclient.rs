@@ -208,7 +208,7 @@ fn parse_int(token: &str, radix: u32) -> Option<Box<dyn WriteCQiBytes>> {
 }
 
 fn parse_string(token: &str) -> Option<Box<STRING>> {
-    if token.starts_with("\"") && token.starts_with("\"") {
+    if token.starts_with("\"") && token.ends_with("\"") {
         let len = token.len();
         Some(Box::new(token[1..len-1].to_owned() as STRING))
     } else {
