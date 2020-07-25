@@ -3,7 +3,9 @@ use std::io::Result as IoResult;
 use std::io::{Read, Write};
 use byteorder::{ByteOrder, NetworkEndian, ReadBytesExt};
 
-mod cqi_consts;
+#[allow(non_camel_case_types)]
+#[allow(dead_code)]
+pub mod cqi_consts;
 mod tests;
 
 pub type BOOL = bool;
@@ -173,7 +175,7 @@ impl WriteCQiBytes for STRING_LIST {
 
 
 pub struct CQiConnection {
-    stream: TcpStream,
+    pub stream: TcpStream,
 }
 
 impl CQiConnection {
