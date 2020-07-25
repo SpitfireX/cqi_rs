@@ -149,7 +149,7 @@ fn parse_response(r: WORD) -> Option<DATA>{
     }
 }
 
-fn parse_token(token: &str) -> Option<Box<dyn WriteCQiBytes>> {
+fn parse_token(token: &str) -> Option<Box<dyn CQiData>> {
     if let Some(data) = parse_command(token) { return Some(data); }
     if let Some(data) = parse_num_type(token) { return Some(data); }
     if let Some(data) = parse_string(token) { return Some(data); }
@@ -164,7 +164,7 @@ fn parse_command(token: &str) -> Option<Box<WORD>> {
     }
 }
 
-fn parse_num_type(token: &str) -> Option<Box<dyn WriteCQiBytes>> {
+fn parse_num_type(token: &str) -> Option<Box<dyn CQiData>> {
     let frags: Vec<&str> = token.split(":").collect();
 
     if frags.len() >= 1 {
@@ -186,21 +186,21 @@ fn parse_num_type(token: &str) -> Option<Box<dyn WriteCQiBytes>> {
     None
 }
 
-fn parse_byte(token: &str, radix: u32) -> Option<Box<dyn WriteCQiBytes>> {
+fn parse_byte(token: &str, radix: u32) -> Option<Box<dyn CQiData>> {
     if let Ok(value) = u8::from_str_radix(token, radix) {
         return Some(Box::new(value as BYTE))
     }
     None
 }
 
-fn parse_word(token: &str, radix: u32) -> Option<Box<dyn WriteCQiBytes>> {
+fn parse_word(token: &str, radix: u32) -> Option<Box<dyn CQiData>> {
     if let Ok(value) = u16::from_str_radix(token, radix) {
         return Some(Box::new(value as WORD))
     }
     None
 }
 
-fn parse_int(token: &str, radix: u32) -> Option<Box<dyn WriteCQiBytes>> {
+fn parse_int(token: &str, radix: u32) -> Option<Box<dyn CQiData>> {
     if let Ok(value) = i32::from_str_radix(token, radix) {
         return Some(Box::new(value as INT))
     }

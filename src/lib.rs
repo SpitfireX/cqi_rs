@@ -38,6 +38,7 @@ pub type STRING_LIST = Vec<STRING>;
 
 pub trait CQiData {
     fn repr(&self) -> String;
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()>;
 }
 
 impl Debug for dyn CQiData {
@@ -50,11 +51,19 @@ impl CQiData for BOOL {
     fn repr(&self) -> String {
         format!("{}", &self)
     }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        Ok(stream.write_all(&[*self as BYTE])?)
+    }
 }
 
 impl CQiData for BYTE {
     fn repr(&self) -> String {
         format!("0x{:X} [= {}]", &self, &self)
+    }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        Ok(stream.write_all(&[*self])?)
     }
 }
 
@@ -62,11 +71,19 @@ impl CQiData for WORD {
     fn repr(&self) -> String {
         format!("0x{:X} [= {}]", &self, &self)
     }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        Ok(stream.write_all(&(self.to_be_bytes()))?)
+    }
 }
 
 impl CQiData for INT {
     fn repr(&self) -> String {
         format!("{}", &self)
+    }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        Ok(stream.write_all(&(self.to_be_bytes()))?)
     }
 }
 
@@ -74,11 +91,20 @@ impl CQiData for STRING {
     fn repr(&self) -> String {
         format!("\"{}\"", &self)
     }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        stream.write_all(&(self.len() as WORD).to_be_bytes())?;
+        Ok(stream.write_all(&(self.as_bytes()))?)
+    }
 }
 
 impl CQiData for BOOL_LIST {
     fn repr(&self) -> String {
         format!("{:?}", &self)
+    }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        write_cqi_list(stream, self)
     }
 }
 
@@ -86,11 +112,19 @@ impl CQiData for BYTE_LIST {
     fn repr(&self) -> String {
         format!("{:?}.len({})", &self, &self.len())
     }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        write_cqi_list(stream, self)
+    }
 }
 
 impl CQiData for INT_LIST {
     fn repr(&self) -> String {
         format!("{:?}.len({})", &self, &self.len())
+    }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        write_cqi_list(stream, self)
     }
 }
 
@@ -98,6 +132,18 @@ impl CQiData for STRING_LIST {
     fn repr(&self) -> String {
         format!("{:?}.len({})", &self, &self.len())
     }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        write_cqi_list(stream, self)
+    }
+}
+
+fn write_cqi_list<T: CQiData>(stream: &mut TcpStream, list: &[T]) -> IoResult<()> {
+    stream.write_all(&(list.len() as INT).to_be_bytes())?;
+    for elem in list {
+        elem.write_cqi_bytes(stream)?;
+    }
+    Ok(())
 }
 
 
@@ -183,80 +229,6 @@ impl ReadCQiBytes for STRING_LIST {
 }
 
 
-pub trait WriteCQiBytes: CQiData{
-    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()>;
-}
-
-impl Debug for dyn WriteCQiBytes {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.repr())
-    }
-}
-
-impl WriteCQiBytes for BOOL {
-    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
-        Ok(stream.write_all(&[*self as BYTE])?)
-    }
-}
-
-impl WriteCQiBytes for BYTE {
-    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
-        Ok(stream.write_all(&[*self])?)
-    }
-}
-
-impl WriteCQiBytes for WORD {
-    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
-        Ok(stream.write_all(&(self.to_be_bytes()))?)
-    }
-}
-
-impl WriteCQiBytes for INT {
-    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
-        Ok(stream.write_all(&(self.to_be_bytes()))?)
-    }
-}
-
-impl WriteCQiBytes for STRING {
-    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
-        stream.write_all(&(self.len() as WORD).to_be_bytes())?;
-        Ok(stream.write_all(&(self.as_bytes()))?)
-    }
-}
-
-fn write_cqi_list<T: WriteCQiBytes>(stream: &mut TcpStream, list: &[T]) -> IoResult<()> {
-    stream.write_all(&(list.len() as INT).to_be_bytes())?;
-    for elem in list {
-        elem.write_cqi_bytes(stream)?;
-    }
-    Ok(())
-}
-
-impl WriteCQiBytes for BOOL_LIST {
-    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
-        write_cqi_list(stream, self)
-    }
-}
-
-impl WriteCQiBytes for BYTE_LIST {
-    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
-        write_cqi_list(stream, self)
-    }
-}
-
-impl WriteCQiBytes for INT_LIST {
-    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
-        write_cqi_list(stream, self)
-    }
-}
-
-impl WriteCQiBytes for STRING_LIST {
-    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
-        write_cqi_list(stream, self)
-    }
-}
-
-
 pub struct CQiConnection {
     pub stream: TcpStream,
 }
@@ -274,11 +246,11 @@ impl CQiConnection {
         Ok(*result)
     }
 
-    pub fn write<A: WriteCQiBytes>(&mut self, data: A) -> IoResult<()> {
+    pub fn write<A: CQiData>(&mut self, data: A) -> IoResult<()> {
         data.write_cqi_bytes(&mut self.stream)
     }
 
-    pub fn write_boxed(&mut self, data: Box<dyn WriteCQiBytes>) -> IoResult<()> {
+    pub fn write_boxed(&mut self, data: Box<dyn CQiData>) -> IoResult<()> {
         (*data).write_cqi_bytes(&mut self.stream)
     }
 
