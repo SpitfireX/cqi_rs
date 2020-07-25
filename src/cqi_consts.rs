@@ -14,6 +14,17 @@ pub const PAD: u8 =  0x00;
 //  ***   CQi responses
 //  ***
 
+#[derive(Debug, enum_utils::FromStr, num_derive::FromPrimitive)]
+#[repr(u8)]
+pub enum ResponseType {
+    STATUS = 0x01,
+    ERROR = 0x02,
+    DATA = 0x03,
+    CL_ERROR = 0x04,
+    CQP_ERROR = 0x05,
+}
+
+#[derive(Debug, enum_utils::FromStr, num_derive::FromPrimitive)]
 #[repr(u16)]
 pub enum STATUS {
     OK = 0x0101,
@@ -22,6 +33,7 @@ pub enum STATUS {
     PING_OK = 0x0104,
 }
 
+#[derive(Debug, enum_utils::FromStr, num_derive::FromPrimitive)]
 #[repr(u16)]
 pub enum ERROR {
     GENERAL_ERROR = 0x0201,
@@ -31,6 +43,7 @@ pub enum ERROR {
     // includes corpus/attribute/subcorpus specifier syntax
 }
 
+#[derive(Debug, enum_utils::FromStr, num_derive::FromPrimitive)]
 #[repr(u16)]
 pub enum DATA {
     BYTE = 0x0301,
@@ -46,6 +59,7 @@ pub enum DATA {
     INT_TABLE = 0x030B,
 }
 
+#[derive(Debug, enum_utils::FromStr, num_derive::FromPrimitive)]
 #[repr(u16)]
 pub enum CL_ERROR {
     NO_SUCH_ATTRIBUTE = 0x0401,
@@ -69,6 +83,7 @@ pub enum CL_ERROR {
     // try discarding some other corpora and/or subcorpora
 }
 
+#[derive(Debug, enum_utils::FromStr, num_derive::FromPrimitive)]
 #[repr(u16)]
 pub enum CQP_ERROR {
     GENERAL = 0x0501,
@@ -81,6 +96,7 @@ pub enum CQP_ERROR {
 //  ***   CQi commands
 //  ***
 
+#[derive(Debug, enum_utils::FromStr, num_derive::FromPrimitive)]
 #[repr(u16)]
 pub enum COMMANDS {
     // CTRL = 0x1100,
