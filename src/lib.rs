@@ -226,6 +226,10 @@ impl CQiConnection {
     pub fn new<A: ToSocketAddrs>(address: A) -> IoResult<CQiConnection> {
         let stream = TcpStream::connect(&address)?;
 
+        let dur = Duration::from_secs(2);
+        stream.set_read_timeout(Some(dur))?;
+        stream.set_write_timeout(Some(dur))?;
+
         Ok(CQiConnection { stream: stream })
     }
 
