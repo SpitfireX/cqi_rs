@@ -82,6 +82,17 @@ impl CQiData for STRING {
     }
 }
 
+impl CQiData for &str {
+    fn repr(&self) -> String {
+        format!("\"{}\"", &self)
+    }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        stream.write_all(&(self.len() as WORD).to_be_bytes())?;
+        Ok(stream.write_all(&(self.as_bytes()))?)
+    }
+}
+
 impl CQiData for BOOL_LIST {
     fn repr(&self) -> String {
         format!("{:?}", &self)
