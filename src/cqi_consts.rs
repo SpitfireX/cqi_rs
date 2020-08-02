@@ -321,7 +321,7 @@ pub enum COMMANDS {
     // frequency distribution of single tokens
     CQP_FDIST_1 = 0x1510,
     // INPUT: (STRING subcorpus, INT cutoff, BYTE field, STRING attribute)
-    // OUTPUT: DATA::INT_LIST
+    // OUTPUT: DATA::INT_TABLE
     // returns <n> (id, frequency) pairs flattened into a list of size 2*<n>
     // field is one of FIELD_MATCH, FIELD_TARGET, FIELD_KEYWORD
     // NB: pairs are sorted by frequency desc.
@@ -329,7 +329,7 @@ pub enum COMMANDS {
     // frequency distribution of pairs of tokens
     CQP_FDIST_2 = 0x1511,
     // INPUT: (STRING subcorpus, INT cutoff, BYTE field1, STRING attribute1, BYTE field2, STRING attribute2)
-    // OUTPUT: DATA::INT_LIST
+    // OUTPUT: DATA::INT_TABLE
     // returns <n> (id1, id2, frequency) pairs flattened into a list of size 3*<n>
     // NB: triples are sorted by frequency desc.
 }
