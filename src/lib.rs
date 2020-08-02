@@ -3,6 +3,9 @@ use std::io::Result as IoResult;
 use std::io::{Read, Write};
 use byteorder::{ByteOrder, NetworkEndian, ReadBytesExt};
 use core::fmt::Debug;
+use cqi_consts::*;
+use num_traits::FromPrimitive;
+use std::time::Duration;
 
 #[allow(non_camel_case_types)]
 #[allow(dead_code)]
@@ -232,6 +235,7 @@ pub struct CQiConnection {
     pub stream: TcpStream,
 }
 
+// Struct methods
 impl CQiConnection {
 
     pub fn new<A: ToSocketAddrs>(address: A) -> IoResult<CQiConnection> {
@@ -250,5 +254,51 @@ impl CQiConnection {
 
     pub fn write_boxed(&mut self, data: Box<dyn CQiData>) -> IoResult<()> {
         (*data).write_cqi_bytes(&mut self.stream)
+    }
+}
+
+macro_rules! send_cqi_data {
+    ( $con:ident, $command:path$(, $( $x:expr ),*)? ) => (
+        {
+            $con.write($command as WORD)?;
+            $(
+                $(
+                    $con.write($x)?;
+                )*
+            )?
+            IoResult::Ok(())
+        }
+    );
+}
+
+macro_rules! receive_cqi_response {
+    ( $con:ident, $msg_type:ident ) => (
+        {
+            let r: WORD = $con.read()?;
+            IoResult::Ok($msg_type::from_u16(r).expect("Malformed response."))
+        }
+    );
+}
+
+// CQi commands
+impl CQiConnection {
+
+    pub fn ctr_connect(&mut self, user: &str, password: &str) -> IoResult<STATUS> {
+        // self.write(COMMANDS::CTRL_CONNECT as WORD)?;
+        // self.write(user)?;
+        // self.write(password)?;
+        send_cqi_data!(self,
+            COMMANDS::CTRL_CONNECT,
+            user,
+            password
+        )?;
+        receive_cqi_response!(self, STATUS)
+    }
+
+    pub fn ctrl_ping(&mut self) -> IoResult<STATUS> {
+        send_cqi_data!(self,
+            COMMANDS::CTRL_PING
+        )?;
+        receive_cqi_response!(self, STATUS)
     }
 }
