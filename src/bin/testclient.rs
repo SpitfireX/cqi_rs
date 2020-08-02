@@ -17,6 +17,7 @@ fn main() -> IoResult<()> {
 
     let r = connection.read_word()?;
     parse_response(r);
+    println!();
 
     //REPL
     // `()` can be used when no completer is required
@@ -40,7 +41,7 @@ fn main() -> IoResult<()> {
                 break
             },
             Err(err) => {
-                println!("Error: {:?}", err);
+                println!("Readline error: {:?}", err);
                 break
             }
         }
