@@ -1,6 +1,7 @@
 use std::net::{TcpStream, SocketAddr, ToSocketAddrs};
 use std::io::Result as IoResult;
 use std::io::{Read, Write};
+use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 use byteorder::{ByteOrder, NetworkEndian, ReadBytesExt};
 use core::fmt::Debug;
 use cqi_consts::*;
@@ -145,94 +146,25 @@ fn write_cqi_list<T: CQiData>(stream: &mut TcpStream, list: &[T]) -> IoResult<()
 }
 
 
-pub trait ReadCQiBytes<T> {
-    fn read(&mut self) -> IoResult<T>;
+pub struct CQiConnection {
+    pub stream: TcpStream,
 }
 
 macro_rules! read_cqi_list {
-    ($type:ident, $con:ident) => (
+    ($con:ident, $readfun:ident) => (
         {
-            let len = $con.stream.read_i32::<NetworkEndian>()?;
+            let len = $con.read_int()?;
 
-            let mut data: Vec<$type> = Vec::with_capacity(len as usize);
+            let mut data = Vec::with_capacity(len as usize);
             
             for _ in 0..len {
-                let value: $type = $con.read()?;
+                let value = $con.$readfun()?;
                 data.push(value);
             }
         
             Ok(data)
         }
     );
-}
-
-impl ReadCQiBytes<BOOL> for CQiConnection {
-    fn read(&mut self) -> IoResult<BOOL> {
-        Ok(self.stream.read_u8()? > 0)
-    }
-}
-
-impl ReadCQiBytes<BYTE> for CQiConnection {
-    fn read(&mut self) -> IoResult<BYTE> {
-        Ok(self.stream.read_u8()?)
-    }
-}
-
-impl ReadCQiBytes<WORD> for CQiConnection {
-    fn read(&mut self) -> IoResult<WORD> {
-        Ok(self.stream.read_u16::<NetworkEndian>()?)
-    }
-}
-
-impl ReadCQiBytes<INT> for CQiConnection {
-    fn read(&mut self) -> IoResult<INT> {
-        Ok(self.stream.read_i32::<NetworkEndian>()?)
-    }
-}
-
-impl ReadCQiBytes<STRING> for CQiConnection {
-    fn read(&mut self) -> IoResult<STRING> {
-        let len = self.stream.read_u16::<NetworkEndian>()?;
-
-        let mut data: Vec<u8> = Vec::with_capacity(len as usize);
-        
-        for _ in 0..len {
-            let value: BYTE = self.read()?;
-            data.push(value);
-        }
-
-        let string = String::from_utf8(data).unwrap();
-        Ok(string)
-    }
-}
-
-impl ReadCQiBytes<BOOL_LIST> for CQiConnection {
-    fn read(&mut self) -> IoResult<BOOL_LIST> {
-        read_cqi_list!(BOOL, self)
-    }
-}
-
-impl ReadCQiBytes<BYTE_LIST> for CQiConnection {
-    fn read(&mut self) -> IoResult<BYTE_LIST> {
-        read_cqi_list!(BYTE, self)
-    }
-}
-
-impl ReadCQiBytes<INT_LIST> for CQiConnection {
-    fn read(&mut self) -> IoResult<INT_LIST> {
-        read_cqi_list!(INT, self)
-    }
-}
-
-impl ReadCQiBytes<STRING_LIST> for CQiConnection {
-    fn read(&mut self) -> IoResult<STRING_LIST> {
-        read_cqi_list!(STRING, self)
-    }
-}
-
-
-pub struct CQiConnection {
-    pub stream: TcpStream,
 }
 
 // Struct methods
@@ -255,6 +187,54 @@ impl CQiConnection {
     pub fn write_boxed(&mut self, data: Box<dyn CQiData>) -> IoResult<()> {
         (*data).write_cqi_bytes(&mut self.stream)
     }
+
+    pub fn read_bool(&mut self) -> IoResult<BOOL> {
+        Ok(self.stream.read_u8()? > 0)
+    }
+
+    pub fn read_byte(&mut self) -> IoResult<BYTE> {
+        Ok(self.stream.read_u8()?)
+    }
+
+    pub fn read_word(&mut self) -> IoResult<WORD> {
+        Ok(self.stream.read_u16::<NetworkEndian>()?)
+    }
+
+    pub fn read_int(&mut self) -> IoResult<INT> {
+        Ok(self.stream.read_i32::<NetworkEndian>()?)
+    }
+
+    pub fn read_string(&mut self) -> IoResult<STRING> {
+        let len = self.read_word()?;
+
+        let mut data: Vec<u8> = Vec::with_capacity(len as usize);
+        
+        for _ in 0..len {
+            let value: BYTE = self.read_byte()?;
+            data.push(value);
+        }
+
+        match String::from_utf8(data) {
+            Ok(str) => Ok(str),
+            Err(_) => Err(IoError::new(IoErrorKind::InvalidData, "Received string bytes are not utf8")),
+        }
+    }
+
+    pub fn read_bool_list(&mut self) -> IoResult<BOOL_LIST> {
+        read_cqi_list!(self, read_bool)
+    }
+
+    pub fn read_byte_list(&mut self) -> IoResult<BYTE_LIST> {
+        read_cqi_list!(self, read_byte)
+    }
+
+    pub fn read_int_list(&mut self) -> IoResult<INT_LIST> {
+        read_cqi_list!(self, read_int)
+    }
+
+    pub fn read_string_list(&mut self) -> IoResult<STRING_LIST> {
+        read_cqi_list!(self, read_string)
+    }
 }
 
 macro_rules! send_cqi_data {
@@ -274,7 +254,7 @@ macro_rules! send_cqi_data {
 macro_rules! receive_cqi_response {
     ( $con:ident, $msg_type:ident ) => (
         {
-            let r: WORD = $con.read()?;
+            let r = $con.read_word()?;
             IoResult::Ok($msg_type::from_u16(r).expect("Malformed response."))
         }
     );

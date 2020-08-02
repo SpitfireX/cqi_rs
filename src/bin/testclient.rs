@@ -15,7 +15,7 @@ fn main() -> IoResult<()> {
     connection.write("test".to_string())?; // user
     connection.write("ficken23".to_string())?; // password
 
-    let r: WORD = connection.read()?;
+    let r = connection.read_word()?;
     parse_response(r);
 
     //REPL
@@ -49,7 +49,7 @@ fn main() -> IoResult<()> {
 
     println!("Closing CQi connection...");
     connection.write(COMMANDS::CTRL_BYE as WORD)?;
-    let r: WORD = connection.read()?;
+    let r: WORD = connection.read_word()?;
     parse_response(r);
     // connection will be closed when value is dropped
 
@@ -84,26 +84,17 @@ fn process_line(connection: &mut CQiConnection, line: &String) -> IoResult<()>{
         
         let datatype = parse_response(u16::from_be_bytes(res_bytes));
 
-        macro_rules! wtfbox {
-            ($type:ident, $con:ident) => (
-                {
-                    let asdf: $type = $con.read()?;
-                    Box::new(asdf)
-                }
-            );
-        }
-
         match datatype {
             Some(datatype) => {
                 let data: Box<dyn CQiData> = match datatype {
-                    DATA::BYTE => wtfbox!(BYTE, connection),
-                    DATA::BOOL => wtfbox!(BOOL, connection),
-                    DATA::INT => wtfbox!(INT, connection),
-                    DATA::STRING => wtfbox!(STRING, connection),
-                    DATA::BYTE_LIST => wtfbox!(BYTE_LIST, connection),
-                    DATA::BOOL_LIST => wtfbox!(BOOL_LIST, connection),
-                    DATA::INT_LIST => wtfbox!(INT_LIST, connection),
-                    DATA::STRING_LIST => wtfbox!(STRING_LIST, connection),
+                    DATA::BYTE => Box::new(connection.read_byte()?),
+                    DATA::BOOL => Box::new(connection.read_bool()?),
+                    DATA::INT => Box::new(connection.read_int()?),
+                    DATA::STRING => Box::new(connection.read_string()?),
+                    DATA::BYTE_LIST => Box::new(connection.read_byte_list()?),
+                    DATA::BOOL_LIST => Box::new(connection.read_bool_list()?),
+                    DATA::INT_LIST => Box::new(connection.read_int_list()?),
+                    DATA::STRING_LIST => Box::new(connection.read_string_list()?),
                     _ => panic!("The fuck is this?"),
                 };
                 println!(" {:?}", data);
