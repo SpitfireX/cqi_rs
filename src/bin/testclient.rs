@@ -96,7 +96,9 @@ fn process_line(connection: &mut CQiConnection, line: &String) -> IoResult<()>{
                     DATA::BOOL_LIST => Box::new(connection.read_bool_list()?),
                     DATA::INT_LIST => Box::new(connection.read_int_list()?),
                     DATA::STRING_LIST => Box::new(connection.read_string_list()?),
-                    _ => panic!("The fuck is this?"),
+                    DATA::INT_INT => Box::new(connection.read_int_int()?),
+                    DATA::INT_INT_INT_INT => Box::new(connection.read_int_int_int_int()?),
+                    DATA::INT_TABLE => Box::new(connection.read_int_table()?),
                 };
                 println!(" {:?}", data);
             },

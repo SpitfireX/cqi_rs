@@ -22,6 +22,10 @@ pub type BOOL_LIST = Vec<BOOL>;
 pub type BYTE_LIST = Vec<BYTE>;
 pub type INT_LIST = Vec<INT>;
 pub type STRING_LIST = Vec<STRING>;
+pub type INT_INT = [INT; 2];
+pub type INT_INT_INT_INT = [INT; 4];
+pub type INT_TABLE = Vec<Vec<INT>>;
+
 
 
 pub trait CQiData {
@@ -137,8 +141,63 @@ impl CQiData for STRING_LIST {
     }
 }
 
+impl CQiData for INT_INT {
+    fn repr(&self) -> String {
+        format!("{:?}", &self)
+    }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        write_cqi_list(stream, self)
+    }
+}
+
+impl CQiData for INT_INT_INT_INT {
+    fn repr(&self) -> String {
+        format!("{:?}", &self)
+    }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        write_cqi_list(stream, self)
+    }
+}
+
+impl CQiData for INT_TABLE {
+    fn repr(&self) -> String {
+        let rows = self.len();
+        let mut cols = 0;
+
+        if rows > 0 {
+            cols = self[0].len();
+        }
+
+        format!("{:?}.rows({}).cols({})", &self, rows, cols)
+    }
+
+    fn write_cqi_bytes(&self, stream: &mut TcpStream) -> IoResult<()> {
+        let rows = self.len();
+        let mut cols = 0;
+
+        if rows > 0 {
+            cols = self[0].len();
+        }
+
+        stream.write_all(&(rows as INT).to_be_bytes())?;
+        stream.write_all(&(cols as INT).to_be_bytes())?;
+
+        for row in 0..rows {
+            write_cqi_multiple(stream, &self[row])?;
+        }
+
+        Ok(())
+    }
+}
+
 fn write_cqi_list<T: CQiData>(stream: &mut TcpStream, list: &[T]) -> IoResult<()> {
     stream.write_all(&(list.len() as INT).to_be_bytes())?;
+    write_cqi_multiple(stream, list)
+}
+
+fn write_cqi_multiple<T: CQiData>(stream: &mut TcpStream, list: &[T]) -> IoResult<()> {
     for elem in list {
         elem.write_cqi_bytes(stream)?;
     }
@@ -150,10 +209,10 @@ pub struct CQiConnection {
     pub stream: TcpStream,
 }
 
-macro_rules! read_cqi_list {
-    ($con:ident, $readfun:ident) => (
+macro_rules! read_cqi_multiple {
+    ($con:ident, $readfun:ident, $num:expr) => (
         {
-            let len = $con.read_int()?;
+            let len = $num;
 
             let mut data = Vec::with_capacity(len as usize);
             
@@ -162,7 +221,17 @@ macro_rules! read_cqi_list {
                 data.push(value);
             }
         
-            Ok(data)
+            IoResult::Ok(data)
+        }
+    );
+}
+
+macro_rules! read_cqi_list {
+    ($con:ident, $readfun:ident) => (
+        {
+            let len = $con.read_int()?;
+
+            read_cqi_multiple!($con, $readfun, len)
         }
     );
 }
@@ -207,12 +276,7 @@ impl CQiConnection {
     pub fn read_string(&mut self) -> IoResult<STRING> {
         let len = self.read_word()?;
 
-        let mut data: Vec<u8> = Vec::with_capacity(len as usize);
-        
-        for _ in 0..len {
-            let value: BYTE = self.read_byte()?;
-            data.push(value);
-        }
+        let data = read_cqi_multiple!(self, read_byte, len)?;
 
         match String::from_utf8(data) {
             Ok(str) => Ok(str),
@@ -234,6 +298,39 @@ impl CQiConnection {
 
     pub fn read_string_list(&mut self) -> IoResult<STRING_LIST> {
         read_cqi_list!(self, read_string)
+    }
+
+    pub fn read_int_int(&mut self) -> IoResult<INT_INT> {
+        Ok(
+            [
+                self.read_int()?,
+                self.read_int()?,
+            ]
+        )
+    }
+
+    pub fn read_int_int_int_int(&mut self) -> IoResult<INT_INT_INT_INT> {
+        Ok(
+            [
+                self.read_int()?,
+                self.read_int()?,
+                self.read_int()?,
+                self.read_int()?,
+            ]
+        )
+    }
+
+    pub fn read_int_table(&mut self) -> IoResult<INT_TABLE> {
+        let rows = self.read_int()?;
+        let cols = self.read_int()?;
+
+        let mut data: INT_TABLE = Vec::with_capacity(rows as usize);
+
+        for _ in 0..rows {
+            data.push(read_cqi_multiple!(self, read_int, cols)?);
+        }
+        
+        Ok(data)
     }
 }
 
